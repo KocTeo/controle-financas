@@ -1,16 +1,20 @@
-from flask import Flask, request, redirect, render_template_string, jsonify
 import sqlite3
 from datetime import datetime
 
+from flask import Flask, jsonify, redirect, render_template_string, request
+
 app = Flask(__name__)
 
-DB_NAME = 'gastos.db'
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_NAME = os.path.join(BASE_DIR, "gastos.db")
 
 
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    cursor.execute('''
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS gastos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nome TEXT NOT NULL,
@@ -19,16 +23,18 @@ def init_db():
             status TEXT NOT NULL DEFAULT 'Pendente',
             tipo TEXT NOT NULL DEFAULT 'Fixo'
         )
-    ''')
+    """)
     try:
-        cursor.execute("ALTER TABLE gastos ADD COLUMN tipo TEXT NOT NULL DEFAULT 'Fixo'")
+        cursor.execute(
+            "ALTER TABLE gastos ADD COLUMN tipo TEXT NOT NULL DEFAULT 'Fixo'"
+        )
     except sqlite3.OperationalError:
         pass
     try:
         cursor.execute("ALTER TABLE gastos ADD COLUMN vencimento INTEGER")
     except sqlite3.OperationalError:
         pass
-    cursor.execute('''
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS receitas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nome TEXT NOT NULL,
@@ -36,14 +42,14 @@ def init_db():
             mes TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'Pendente'
         )
-    ''')
-    cursor.execute('''
+    """)
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS metas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             mes TEXT UNIQUE NOT NULL,
             limite REAL NOT NULL
         )
-    ''')
+    """)
     conn.commit()
     conn.close()
 
@@ -52,91 +58,113 @@ def get_conn():
     return sqlite3.connect(DB_NAME)
 
 
-MESES_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
-            'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+MESES_PT = [
+    "Janeiro",
+    "Fevereiro",
+    "Março",
+    "Abril",
+    "Maio",
+    "Junho",
+    "Julho",
+    "Agosto",
+    "Setembro",
+    "Outubro",
+    "Novembro",
+    "Dezembro",
+]
+
 
 def mes_label(mes):
-    ano, m = map(int, mes.split('-'))
-    return f'{MESES_PT[m - 1]} {ano}'
+    ano, m = map(int, mes.split("-"))
+    return f"{MESES_PT[m - 1]} {ano}"
+
 
 def mes_offset(mes, delta):
-    ano, m = map(int, mes.split('-'))
+    ano, m = map(int, mes.split("-"))
     m += delta
     ano += (m - 1) // 12
     m = ((m - 1) % 12) + 1
-    return f'{ano:04d}-{m:02d}'
+    return f"{ano:04d}-{m:02d}"
+
 
 def gerar_meses(mes_inicio, qtd=12):
-    ano, mes = map(int, mes_inicio.split('-'))
+    ano, mes = map(int, mes_inicio.split("-"))
     resultado = []
     for i in range(qtd):
         m = mes + i
         a = ano + (m - 1) // 12
         m = ((m - 1) % 12) + 1
-        resultado.append(f'{a:04d}-{m:02d}')
+        resultado.append(f"{a:04d}-{m:02d}")
     return resultado
 
 
-@app.route('/')
+@app.route("/")
 def index():
-    mes = request.args.get('mes') or datetime.now().strftime('%Y-%m')
+    mes = request.args.get("mes") or datetime.now().strftime("%Y-%m")
 
     conn = get_conn()
     cursor = conn.cursor()
     cursor.execute(
-        '''SELECT id, nome, valor, status, tipo, vencimento FROM gastos
+        """SELECT id, nome, valor, status, tipo, vencimento FROM gastos
            WHERE mes = ?
            ORDER BY tipo,
                     CASE WHEN vencimento IS NULL THEN 32 ELSE vencimento END,
-                    nome''',
-        (mes,)
+                    nome""",
+        (mes,),
     )
     gastos = cursor.fetchall()
 
     # Meta do mês
-    meta_row = conn.execute('SELECT limite FROM metas WHERE mes = ?', (mes,)).fetchone()
+    meta_row = conn.execute("SELECT limite FROM metas WHERE mes = ?", (mes,)).fetchone()
     meta = meta_row[0] if meta_row else None
 
     conn.close()
 
     total = sum(g[2] for g in gastos)
-    pagos = sum(g[2] for g in gastos if g[3] == 'Pago')
+    pagos = sum(g[2] for g in gastos if g[3] == "Pago")
     pendentes = total - pagos
-    total_fixos = sum(g[2] for g in gastos if g[4] == 'Fixo')
-    total_esporadicos = sum(g[2] for g in gastos if g[4] == 'Esporádico')
-    gastos_fixos = [g for g in gastos if g[4] == 'Fixo']
-    gastos_esporadicos = [g for g in gastos if g[4] == 'Esporádico']
+    total_fixos = sum(g[2] for g in gastos if g[4] == "Fixo")
+    total_esporadicos = sum(g[2] for g in gastos if g[4] == "Esporádico")
+    gastos_fixos = [g for g in gastos if g[4] == "Fixo"]
+    gastos_esporadicos = [g for g in gastos if g[4] == "Esporádico"]
 
     meta_pct = None
     if meta and meta > 0:
         meta_pct = round((total / meta) * 100, 1)
 
-    editar_id = request.args.get('editar', type=int)
-    editar_receita_id = request.args.get('editar_receita', type=int)
+    editar_id = request.args.get("editar", type=int)
+    editar_receita_id = request.args.get("editar_receita", type=int)
 
     conn = get_conn()
     receitas = conn.execute(
-        'SELECT id, nome, valor, status FROM receitas WHERE mes = ? ORDER BY nome',
-        (mes,)
+        "SELECT id, nome, valor, status FROM receitas WHERE mes = ? ORDER BY nome",
+        (mes,),
     ).fetchall()
-    nomes_gastos = [r[0] for r in conn.execute(
-        'SELECT DISTINCT nome FROM gastos ORDER BY nome'
-    ).fetchall()]
-    nomes_receitas = [r[0] for r in conn.execute(
-        'SELECT DISTINCT nome FROM receitas ORDER BY nome'
-    ).fetchall()]
+    nomes_gastos = [
+        r[0]
+        for r in conn.execute(
+            "SELECT DISTINCT nome FROM gastos ORDER BY nome"
+        ).fetchall()
+    ]
+    nomes_receitas = [
+        r[0]
+        for r in conn.execute(
+            "SELECT DISTINCT nome FROM receitas ORDER BY nome"
+        ).fetchall()
+    ]
     conn.close()
 
     total_receitas = sum(r[2] for r in receitas)
-    recebido = sum(r[2] for r in receitas if r[3] == 'Recebido')
+    recebido = sum(r[2] for r in receitas if r[3] == "Recebido")
     saldo = total_receitas - total
 
     now = datetime.now()
     dia_hoje = now.day
-    mes_atual = now.strftime('%Y-%m')
-    eh_mes_atual = (mes == mes_atual)
+    mes_atual = now.strftime("%Y-%m")
+    eh_mes_atual = mes == mes_atual
 
-    return render_template_string(TEMPLATE,
+    return render_template_string(
+        TEMPLATE,
         gastos=gastos,
         mes=mes,
         mes_label=mes_label(mes),
@@ -164,27 +192,27 @@ def index():
     )
 
 
-@app.route('/adicionar', methods=['POST'])
+@app.route("/adicionar", methods=["POST"])
 def adicionar():
-    nome = request.form.get('nome', '').strip()
-    valor = request.form.get('valor', '0').replace(',', '.')
-    mes = request.form.get('mes') or datetime.now().strftime('%Y-%m')
+    nome = request.form.get("nome", "").strip()
+    valor = request.form.get("valor", "0").replace(",", ".")
+    mes = request.form.get("mes") or datetime.now().strftime("%Y-%m")
 
     if not nome:
-        return redirect(f'/?mes={mes}')
+        return redirect(f"/?mes={mes}")
 
     try:
         valor = float(valor)
     except ValueError:
-        return redirect(f'/?mes={mes}')
+        return redirect(f"/?mes={mes}")
 
     try:
-        qtd_meses = max(1, int(request.form.get('meses', '') or 1))
+        qtd_meses = max(1, int(request.form.get("meses", "") or 1))
     except ValueError:
         qtd_meses = 1
     meses = gerar_meses(mes, qtd_meses)
 
-    vencimento_raw = request.form.get('vencimento', '').strip()
+    vencimento_raw = request.form.get("vencimento", "").strip()
     vencimento = None
     if vencimento_raw:
         try:
@@ -195,49 +223,51 @@ def adicionar():
             pass
 
     conn = get_conn()
-    tipo = request.form.get('tipo', 'Fixo')
-    if tipo not in ('Fixo', 'Esporádico'):
-        tipo = 'Fixo'
+    tipo = request.form.get("tipo", "Fixo")
+    if tipo not in ("Fixo", "Esporádico"):
+        tipo = "Fixo"
 
     conn.executemany(
-        'INSERT INTO gastos (nome, valor, mes, status, tipo, vencimento) VALUES (?, ?, ?, ?, ?, ?)',
-        [(nome, valor, m, 'Pendente', tipo, vencimento) for m in meses]
+        "INSERT INTO gastos (nome, valor, mes, status, tipo, vencimento) VALUES (?, ?, ?, ?, ?, ?)",
+        [(nome, valor, m, "Pendente", tipo, vencimento) for m in meses],
     )
     conn.commit()
     conn.close()
 
-    return redirect(f'/?mes={mes}')
+    return redirect(f"/?mes={mes}")
 
 
-@app.route('/toggle/<int:gasto_id>')
+@app.route("/toggle/<int:gasto_id>")
 def toggle(gasto_id):
-    mes = request.args.get('mes') or datetime.now().strftime('%Y-%m')
+    mes = request.args.get("mes") or datetime.now().strftime("%Y-%m")
 
     conn = get_conn()
     cursor = conn.cursor()
-    cursor.execute('SELECT status FROM gastos WHERE id = ?', (gasto_id,))
+    cursor.execute("SELECT status FROM gastos WHERE id = ?", (gasto_id,))
     row = cursor.fetchone()
 
     if row:
-        novo_status = 'Pago' if row[0] == 'Pendente' else 'Pendente'
-        conn.execute('UPDATE gastos SET status = ? WHERE id = ?', (novo_status, gasto_id))
+        novo_status = "Pago" if row[0] == "Pendente" else "Pendente"
+        conn.execute(
+            "UPDATE gastos SET status = ? WHERE id = ?", (novo_status, gasto_id)
+        )
         conn.commit()
 
     conn.close()
-    return redirect(f'/?mes={mes}')
+    return redirect(f"/?mes={mes}")
 
 
-@app.route('/editar/<int:gasto_id>', methods=['POST'])
+@app.route("/editar/<int:gasto_id>", methods=["POST"])
 def editar(gasto_id):
-    mes = request.form.get('mes') or datetime.now().strftime('%Y-%m')
-    valor = request.form.get('valor', '0').replace(',', '.')
+    mes = request.form.get("mes") or datetime.now().strftime("%Y-%m")
+    valor = request.form.get("valor", "0").replace(",", ".")
 
     try:
         valor = float(valor)
     except ValueError:
-        return redirect(f'/?mes={mes}')
+        return redirect(f"/?mes={mes}")
 
-    vencimento_raw = request.form.get('vencimento', '').strip()
+    vencimento_raw = request.form.get("vencimento", "").strip()
     vencimento = None
     if vencimento_raw:
         try:
@@ -247,228 +277,242 @@ def editar(gasto_id):
         except ValueError:
             pass
 
-    todos = request.form.get('todos') == 'on'
+    todos = request.form.get("todos") == "on"
     conn = get_conn()
     if todos:
-        row = conn.execute('SELECT nome FROM gastos WHERE id = ?', (gasto_id,)).fetchone()
+        row = conn.execute(
+            "SELECT nome FROM gastos WHERE id = ?", (gasto_id,)
+        ).fetchone()
         if row:
-            conn.execute('UPDATE gastos SET valor = ?, vencimento = ? WHERE nome = ?',
-                         (valor, vencimento, row[0]))
+            conn.execute(
+                "UPDATE gastos SET valor = ?, vencimento = ? WHERE nome = ?",
+                (valor, vencimento, row[0]),
+            )
     else:
-        conn.execute('UPDATE gastos SET valor = ?, vencimento = ? WHERE id = ?',
-                     (valor, vencimento, gasto_id))
+        conn.execute(
+            "UPDATE gastos SET valor = ?, vencimento = ? WHERE id = ?",
+            (valor, vencimento, gasto_id),
+        )
     conn.commit()
     conn.close()
 
-    return redirect(f'/?mes={mes}')
+    return redirect(f"/?mes={mes}")
 
 
-@app.route('/excluir/<int:gasto_id>')
+@app.route("/excluir/<int:gasto_id>")
 def excluir(gasto_id):
-    mes = request.args.get('mes') or datetime.now().strftime('%Y-%m')
+    mes = request.args.get("mes") or datetime.now().strftime("%Y-%m")
 
     conn = get_conn()
-    conn.execute('DELETE FROM gastos WHERE id = ?', (gasto_id,))
+    conn.execute("DELETE FROM gastos WHERE id = ?", (gasto_id,))
     conn.commit()
     conn.close()
 
-    return redirect(f'/?mes={mes}')
+    return redirect(f"/?mes={mes}")
 
 
-@app.route('/excluir-todos/<int:gasto_id>')
+@app.route("/excluir-todos/<int:gasto_id>")
 def excluir_todos(gasto_id):
-    mes = request.args.get('mes') or datetime.now().strftime('%Y-%m')
+    mes = request.args.get("mes") or datetime.now().strftime("%Y-%m")
 
     conn = get_conn()
-    row = conn.execute('SELECT nome FROM gastos WHERE id = ?', (gasto_id,)).fetchone()
+    row = conn.execute("SELECT nome FROM gastos WHERE id = ?", (gasto_id,)).fetchone()
     if row:
-        conn.execute('DELETE FROM gastos WHERE nome = ?', (row[0],))
+        conn.execute("DELETE FROM gastos WHERE nome = ?", (row[0],))
         conn.commit()
     conn.close()
 
-    return redirect(f'/?mes={mes}')
+    return redirect(f"/?mes={mes}")
 
 
-@app.route('/receita/adicionar', methods=['POST'])
+@app.route("/receita/adicionar", methods=["POST"])
 def adicionar_receita():
-    nome = request.form.get('nome', '').strip()
-    valor = request.form.get('valor', '0').replace(',', '.')
-    mes = request.form.get('mes') or datetime.now().strftime('%Y-%m')
+    nome = request.form.get("nome", "").strip()
+    valor = request.form.get("valor", "0").replace(",", ".")
+    mes = request.form.get("mes") or datetime.now().strftime("%Y-%m")
 
     if not nome:
-        return redirect(f'/?mes={mes}')
+        return redirect(f"/?mes={mes}")
 
     try:
         valor = float(valor)
     except ValueError:
-        return redirect(f'/?mes={mes}')
+        return redirect(f"/?mes={mes}")
 
     try:
-        qtd_meses = max(1, int(request.form.get('meses', '') or 1))
+        qtd_meses = max(1, int(request.form.get("meses", "") or 1))
     except ValueError:
         qtd_meses = 1
     meses = gerar_meses(mes, qtd_meses)
 
     conn = get_conn()
     conn.executemany(
-        'INSERT INTO receitas (nome, valor, mes, status) VALUES (?, ?, ?, ?)',
-        [(nome, valor, m, 'Pendente') for m in meses]
+        "INSERT INTO receitas (nome, valor, mes, status) VALUES (?, ?, ?, ?)",
+        [(nome, valor, m, "Pendente") for m in meses],
     )
     conn.commit()
     conn.close()
 
-    return redirect(f'/?mes={mes}')
+    return redirect(f"/?mes={mes}")
 
 
-@app.route('/receita/toggle/<int:receita_id>')
+@app.route("/receita/toggle/<int:receita_id>")
 def toggle_receita(receita_id):
-    mes = request.args.get('mes') or datetime.now().strftime('%Y-%m')
+    mes = request.args.get("mes") or datetime.now().strftime("%Y-%m")
 
     conn = get_conn()
-    row = conn.execute('SELECT status FROM receitas WHERE id = ?', (receita_id,)).fetchone()
+    row = conn.execute(
+        "SELECT status FROM receitas WHERE id = ?", (receita_id,)
+    ).fetchone()
     if row:
-        novo = 'Recebido' if row[0] == 'Pendente' else 'Pendente'
-        conn.execute('UPDATE receitas SET status = ? WHERE id = ?', (novo, receita_id))
+        novo = "Recebido" if row[0] == "Pendente" else "Pendente"
+        conn.execute("UPDATE receitas SET status = ? WHERE id = ?", (novo, receita_id))
         conn.commit()
     conn.close()
 
-    return redirect(f'/?mes={mes}')
+    return redirect(f"/?mes={mes}")
 
 
-@app.route('/receita/editar/<int:receita_id>', methods=['POST'])
+@app.route("/receita/editar/<int:receita_id>", methods=["POST"])
 def editar_receita(receita_id):
-    mes = request.form.get('mes') or datetime.now().strftime('%Y-%m')
-    valor = request.form.get('valor', '0').replace(',', '.')
+    mes = request.form.get("mes") or datetime.now().strftime("%Y-%m")
+    valor = request.form.get("valor", "0").replace(",", ".")
 
     try:
         valor = float(valor)
     except ValueError:
-        return redirect(f'/?mes={mes}')
+        return redirect(f"/?mes={mes}")
 
-    todos = request.form.get('todos') == 'on'
+    todos = request.form.get("todos") == "on"
     conn = get_conn()
     if todos:
-        row = conn.execute('SELECT nome FROM receitas WHERE id = ?', (receita_id,)).fetchone()
+        row = conn.execute(
+            "SELECT nome FROM receitas WHERE id = ?", (receita_id,)
+        ).fetchone()
         if row:
-            conn.execute('UPDATE receitas SET valor = ? WHERE nome = ?', (valor, row[0]))
+            conn.execute(
+                "UPDATE receitas SET valor = ? WHERE nome = ?", (valor, row[0])
+            )
     else:
-        conn.execute('UPDATE receitas SET valor = ? WHERE id = ?', (valor, receita_id))
+        conn.execute("UPDATE receitas SET valor = ? WHERE id = ?", (valor, receita_id))
     conn.commit()
     conn.close()
 
-    return redirect(f'/?mes={mes}')
+    return redirect(f"/?mes={mes}")
 
 
-@app.route('/receita/excluir/<int:receita_id>')
+@app.route("/receita/excluir/<int:receita_id>")
 def excluir_receita(receita_id):
-    mes = request.args.get('mes') or datetime.now().strftime('%Y-%m')
+    mes = request.args.get("mes") or datetime.now().strftime("%Y-%m")
 
     conn = get_conn()
-    conn.execute('DELETE FROM receitas WHERE id = ?', (receita_id,))
+    conn.execute("DELETE FROM receitas WHERE id = ?", (receita_id,))
     conn.commit()
     conn.close()
 
-    return redirect(f'/?mes={mes}')
+    return redirect(f"/?mes={mes}")
 
 
-@app.route('/receita/excluir-todos/<int:receita_id>')
+@app.route("/receita/excluir-todos/<int:receita_id>")
 def excluir_todos_receita(receita_id):
-    mes = request.args.get('mes') or datetime.now().strftime('%Y-%m')
+    mes = request.args.get("mes") or datetime.now().strftime("%Y-%m")
 
     conn = get_conn()
-    row = conn.execute('SELECT nome FROM receitas WHERE id = ?', (receita_id,)).fetchone()
+    row = conn.execute(
+        "SELECT nome FROM receitas WHERE id = ?", (receita_id,)
+    ).fetchone()
     if row:
-        conn.execute('DELETE FROM receitas WHERE nome = ?', (row[0],))
+        conn.execute("DELETE FROM receitas WHERE nome = ?", (row[0],))
         conn.commit()
     conn.close()
 
-    return redirect(f'/?mes={mes}')
+    return redirect(f"/?mes={mes}")
 
 
-@app.route('/meta/salvar', methods=['POST'])
+@app.route("/meta/salvar", methods=["POST"])
 def salvar_meta():
-    mes = request.form.get('mes') or datetime.now().strftime('%Y-%m')
-    limite_raw = request.form.get('limite', '0').replace(',', '.')
+    mes = request.form.get("mes") or datetime.now().strftime("%Y-%m")
+    limite_raw = request.form.get("limite", "0").replace(",", ".")
     try:
         limite = float(limite_raw)
     except ValueError:
-        return redirect(f'/?mes={mes}')
+        return redirect(f"/?mes={mes}")
 
     conn = get_conn()
     conn.execute(
-        '''INSERT INTO metas (mes, limite) VALUES (?, ?)
-           ON CONFLICT(mes) DO UPDATE SET limite = excluded.limite''',
-        (mes, limite)
+        """INSERT INTO metas (mes, limite) VALUES (?, ?)
+           ON CONFLICT(mes) DO UPDATE SET limite = excluded.limite""",
+        (mes, limite),
     )
     conn.commit()
     conn.close()
 
-    return redirect(f'/?mes={mes}')
+    return redirect(f"/?mes={mes}")
 
 
-@app.route('/api/alertas')
+@app.route("/api/alertas")
 def api_alertas():
-    mes = request.args.get('mes') or datetime.now().strftime('%Y-%m')
+    mes = request.args.get("mes") or datetime.now().strftime("%Y-%m")
     now = datetime.now()
     dia_hoje = now.day
-    mes_atual = now.strftime('%Y-%m')
+    mes_atual = now.strftime("%Y-%m")
 
     # Só retorna alertas para o mês atual
     if mes != mes_atual:
-        return jsonify({'alertas': []})
+        return jsonify({"alertas": []})
 
     conn = get_conn()
     rows = conn.execute(
-        '''SELECT nome, valor, vencimento FROM gastos
+        """SELECT nome, valor, vencimento FROM gastos
            WHERE mes = ? AND status = 'Pendente' AND vencimento IS NOT NULL
-             AND (vencimento - ? <= 3)''',
-        (mes, dia_hoje)
+             AND (vencimento - ? <= 3)""",
+        (mes, dia_hoje),
     ).fetchall()
     conn.close()
 
     alertas = []
     for nome, valor, vencimento in rows:
         diff = vencimento - dia_hoje
-        alertas.append({
-            'nome': nome,
-            'valor': valor,
-            'vencimento': vencimento,
-            'diff': diff,
-        })
+        alertas.append(
+            {
+                "nome": nome,
+                "valor": valor,
+                "vencimento": vencimento,
+                "diff": diff,
+            }
+        )
 
     # Ordenar: atrasados primeiro, depois por proximidade
-    alertas.sort(key=lambda x: x['diff'])
+    alertas.sort(key=lambda x: x["diff"])
 
-    return jsonify({'alertas': alertas})
+    return jsonify({"alertas": alertas})
 
 
-@app.route('/comparativo')
+@app.route("/comparativo")
 def comparativo():
     now = datetime.now()
-    mes_atual = now.strftime('%Y-%m')
+    mes_atual = now.strftime("%Y-%m")
     mes_anterior = mes_offset(mes_atual, -1)
 
-    mes_a = request.args.get('mes_a') or mes_anterior
-    mes_b = request.args.get('mes_b') or mes_atual
+    mes_a = request.args.get("mes_a") or mes_anterior
+    mes_b = request.args.get("mes_b") or mes_atual
 
     conn = get_conn()
 
     gastos_a_rows = conn.execute(
-        'SELECT nome, tipo, SUM(valor) FROM gastos WHERE mes = ? GROUP BY nome, tipo',
-        (mes_a,)
+        "SELECT nome, tipo, SUM(valor) FROM gastos WHERE mes = ? GROUP BY nome, tipo",
+        (mes_a,),
     ).fetchall()
     gastos_b_rows = conn.execute(
-        'SELECT nome, tipo, SUM(valor) FROM gastos WHERE mes = ? GROUP BY nome, tipo',
-        (mes_b,)
+        "SELECT nome, tipo, SUM(valor) FROM gastos WHERE mes = ? GROUP BY nome, tipo",
+        (mes_b,),
     ).fetchall()
 
     receitas_a_rows = conn.execute(
-        'SELECT nome, SUM(valor) FROM receitas WHERE mes = ? GROUP BY nome',
-        (mes_a,)
+        "SELECT nome, SUM(valor) FROM receitas WHERE mes = ? GROUP BY nome", (mes_a,)
     ).fetchall()
     receitas_b_rows = conn.execute(
-        'SELECT nome, SUM(valor) FROM receitas WHERE mes = ? GROUP BY nome',
-        (mes_b,)
+        "SELECT nome, SUM(valor) FROM receitas WHERE mes = ? GROUP BY nome", (mes_b,)
     ).fetchall()
 
     conn.close()
@@ -476,19 +520,23 @@ def comparativo():
     # Merge gastos por (nome, tipo)
     gastos_a = {(r[0], r[1]): r[2] for r in gastos_a_rows}
     gastos_b = {(r[0], r[1]): r[2] for r in gastos_b_rows}
-    todas_chaves_gastos = sorted(set(gastos_a) | set(gastos_b), key=lambda x: (x[1], x[0]))
+    todas_chaves_gastos = sorted(
+        set(gastos_a) | set(gastos_b), key=lambda x: (x[1], x[0])
+    )
 
     tabela_gastos = []
-    for (nome, tipo) in todas_chaves_gastos:
+    for nome, tipo in todas_chaves_gastos:
         va = gastos_a.get((nome, tipo), 0)
         vb = gastos_b.get((nome, tipo), 0)
-        tabela_gastos.append({
-            'nome': nome,
-            'tipo': tipo,
-            'valor_a': va,
-            'valor_b': vb,
-            'diff': vb - va,
-        })
+        tabela_gastos.append(
+            {
+                "nome": nome,
+                "tipo": tipo,
+                "valor_a": va,
+                "valor_b": vb,
+                "diff": vb - va,
+            }
+        )
 
     # Merge receitas por nome
     receitas_a = {r[0]: r[1] for r in receitas_a_rows}
@@ -499,19 +547,22 @@ def comparativo():
     for nome in todas_chaves_receitas:
         va = receitas_a.get(nome, 0)
         vb = receitas_b.get(nome, 0)
-        tabela_receitas.append({
-            'nome': nome,
-            'valor_a': va,
-            'valor_b': vb,
-            'diff': vb - va,
-        })
+        tabela_receitas.append(
+            {
+                "nome": nome,
+                "valor_a": va,
+                "valor_b": vb,
+                "diff": vb - va,
+            }
+        )
 
-    total_gastos_a = sum(r['valor_a'] for r in tabela_gastos)
-    total_gastos_b = sum(r['valor_b'] for r in tabela_gastos)
-    total_receitas_a = sum(r['valor_a'] for r in tabela_receitas)
-    total_receitas_b = sum(r['valor_b'] for r in tabela_receitas)
+    total_gastos_a = sum(r["valor_a"] for r in tabela_gastos)
+    total_gastos_b = sum(r["valor_b"] for r in tabela_gastos)
+    total_receitas_a = sum(r["valor_a"] for r in tabela_receitas)
+    total_receitas_b = sum(r["valor_b"] for r in tabela_receitas)
 
-    return render_template_string(COMPARATIVO_TEMPLATE,
+    return render_template_string(
+        COMPARATIVO_TEMPLATE,
         mes_a=mes_a,
         mes_b=mes_b,
         mes_label_a=mes_label(mes_a),
@@ -527,56 +578,72 @@ def comparativo():
     )
 
 
-@app.route('/dashboard')
+@app.route("/dashboard")
 def dashboard():
     conn = get_conn()
 
-    gastos_por_mes = {r[0]: r[1] for r in conn.execute(
-        'SELECT mes, SUM(valor) FROM gastos GROUP BY mes ORDER BY mes'
-    ).fetchall()}
+    gastos_por_mes = {
+        r[0]: r[1]
+        for r in conn.execute(
+            "SELECT mes, SUM(valor) FROM gastos GROUP BY mes ORDER BY mes"
+        ).fetchall()
+    }
 
-    receitas_por_mes = {r[0]: r[1] for r in conn.execute(
-        'SELECT mes, SUM(valor) FROM receitas GROUP BY mes ORDER BY mes'
-    ).fetchall()}
+    receitas_por_mes = {
+        r[0]: r[1]
+        for r in conn.execute(
+            "SELECT mes, SUM(valor) FROM receitas GROUP BY mes ORDER BY mes"
+        ).fetchall()
+    }
 
-    gastos_pagos_por_mes = {r[0]: r[1] for r in conn.execute(
-        "SELECT mes, SUM(valor) FROM gastos WHERE status='Pago' GROUP BY mes"
-    ).fetchall()}
+    gastos_pagos_por_mes = {
+        r[0]: r[1]
+        for r in conn.execute(
+            "SELECT mes, SUM(valor) FROM gastos WHERE status='Pago' GROUP BY mes"
+        ).fetchall()
+    }
 
-    receitas_recebidas_por_mes = {r[0]: r[1] for r in conn.execute(
-        "SELECT mes, SUM(valor) FROM receitas WHERE status='Recebido' GROUP BY mes"
-    ).fetchall()}
+    receitas_recebidas_por_mes = {
+        r[0]: r[1]
+        for r in conn.execute(
+            "SELECT mes, SUM(valor) FROM receitas WHERE status='Recebido' GROUP BY mes"
+        ).fetchall()
+    }
 
     conn.close()
 
     todos_meses = sorted(set(gastos_por_mes) | set(receitas_por_mes))
 
     meses_labels = [mes_label(m) for m in todos_meses]
-    valores_gastos   = [round(gastos_por_mes.get(m, 0), 2)   for m in todos_meses]
+    valores_gastos = [round(gastos_por_mes.get(m, 0), 2) for m in todos_meses]
     valores_receitas = [round(receitas_por_mes.get(m, 0), 2) for m in todos_meses]
-    valores_saldo    = [round(receitas_por_mes.get(m, 0) - gastos_por_mes.get(m, 0), 2) for m in todos_meses]
+    valores_saldo = [
+        round(receitas_por_mes.get(m, 0) - gastos_por_mes.get(m, 0), 2)
+        for m in todos_meses
+    ]
 
-    total_gastos   = sum(valores_gastos)
+    total_gastos = sum(valores_gastos)
     total_receitas = sum(valores_receitas)
-    saldo_geral    = total_receitas - total_gastos
-    total_pago     = sum(gastos_pagos_por_mes.values())
+    saldo_geral = total_receitas - total_gastos
+    total_pago = sum(gastos_pagos_por_mes.values())
     total_recebido = sum(receitas_recebidas_por_mes.values())
 
     tabela = [
         {
-            'mes': mes_label(m),
-            'receitas': receitas_por_mes.get(m, 0),
-            'gastos':   gastos_por_mes.get(m, 0),
-            'saldo':    receitas_por_mes.get(m, 0) - gastos_por_mes.get(m, 0),
+            "mes": mes_label(m),
+            "receitas": receitas_por_mes.get(m, 0),
+            "gastos": gastos_por_mes.get(m, 0),
+            "saldo": receitas_por_mes.get(m, 0) - gastos_por_mes.get(m, 0),
         }
         for m in todos_meses
     ]
 
     now = datetime.now()
-    mes_atual = now.strftime('%Y-%m')
+    mes_atual = now.strftime("%Y-%m")
     mes_anterior = mes_offset(mes_atual, -1)
 
-    return render_template_string(DASHBOARD_TEMPLATE,
+    return render_template_string(
+        DASHBOARD_TEMPLATE,
         meses_labels=meses_labels,
         valores_gastos=valores_gastos,
         valores_receitas=valores_receitas,
@@ -592,7 +659,7 @@ def dashboard():
     )
 
 
-TEMPLATE = '''
+TEMPLATE = """
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -1368,10 +1435,10 @@ document.getElementById('theme-toggle').textContent =
 
 </body>
 </html>
-'''
+"""
 
 
-COMPARATIVO_TEMPLATE = '''
+COMPARATIVO_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -1684,10 +1751,10 @@ document.getElementById('theme-toggle').textContent =
 
 </body>
 </html>
-'''
+"""
 
 
-DASHBOARD_TEMPLATE = '''
+DASHBOARD_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -2045,9 +2112,9 @@ document.getElementById('theme-toggle').textContent =
 
 </body>
 </html>
-'''
+"""
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     init_db()
     app.run(debug=True)
