@@ -699,7 +699,7 @@ TEMPLATE = """
             --check-color: #666666;
         }
 
-        [data-theme="dark"] {
+        html[data-theme="dark"] {
             --bg: #0f1117;
             --surface: #1a1d27;
             --text: #cbd5e1;
@@ -725,42 +725,52 @@ TEMPLATE = """
         body {
             font-family: Arial, sans-serif;
             max-width: 960px;
-            margin: 40px auto;
-            padding: 20px;
+            margin: 0 auto;
+            padding: 12px;
             background: var(--bg);
             color: var(--text);
             transition: background 0.2s, color 0.2s;
         }
 
-        h1 { font-size: 1.8rem; color: var(--text-heading); }
+        @media (min-width: 600px) {
+            body { padding: 20px; margin: 24px auto; }
+        }
+
+        h1 { font-size: 1.5rem; color: var(--text-heading); }
+        @media (min-width: 600px) { h1 { font-size: 1.8rem; } }
 
         .cards {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-            margin-bottom: 24px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
         }
 
-        @media (max-width: 800px) { .cards { grid-template-columns: repeat(3, 1fr); } }
-        @media (max-width: 500px)  { .cards { grid-template-columns: repeat(2, 1fr); } }
+        @media (min-width: 500px)  { .cards { grid-template-columns: repeat(3, 1fr); gap: 12px; } }
+        @media (min-width: 800px)  { .cards { grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; } }
 
         .card {
             background: var(--surface);
             border-radius: 10px;
-            padding: 20px;
+            padding: 14px 12px;
             text-align: center;
             box-shadow: 0 2px 6px var(--shadow);
         }
 
+        @media (min-width: 600px) { .card { padding: 20px; } }
+
         .card .label {
-            font-size: 0.85rem;
+            font-size: 0.78rem;
             color: var(--text-muted);
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
 
-        .card .valor { font-size: 1.6rem; font-weight: bold; }
+        @media (min-width: 600px) { .card .label { font-size: 0.85rem; margin-bottom: 6px; } }
+
+        .card .valor { font-size: 1.2rem; font-weight: bold; }
+        @media (min-width: 600px) { .card .valor { font-size: 1.6rem; } }
 
         .card.total .valor       { color: var(--text-heading); }
         .card.pagos .valor       { color: #27ae60; }
@@ -775,10 +785,12 @@ TEMPLATE = """
         .painel {
             background: var(--surface);
             border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 24px;
+            padding: 14px;
+            margin-bottom: 16px;
             box-shadow: 0 2px 6px var(--shadow);
         }
+
+        @media (min-width: 600px) { .painel { padding: 20px; margin-bottom: 24px; } }
 
         .painel h2 { font-size: 1rem; margin-bottom: 12px; color: var(--text-muted); }
 
@@ -799,9 +811,9 @@ TEMPLATE = """
 
         input:focus { border-color: #4a90e2; }
 
-        input[type="text"]   { flex: 2; min-width: 160px; }
-        input[type="number"] { flex: 1; min-width: 100px; }
-        input[type="month"]  { flex: 1; min-width: 140px; }
+        input[type="text"]   { flex: 2; min-width: 140px; }
+        input[type="number"] { flex: 1; min-width: 80px; }
+        input[type="month"]  { flex: 1; min-width: 130px; }
 
         button {
             padding: 9px 18px;
@@ -837,21 +849,27 @@ TEMPLATE = """
         .nav-mes {
             background: var(--surface);
             border-radius: 10px;
-            padding: 16px 20px;
-            margin-bottom: 24px;
+            padding: 12px 14px;
+            margin-bottom: 16px;
             box-shadow: 0 2px 6px var(--shadow);
             display: flex;
             align-items: center;
-            gap: 12px;
+            flex-wrap: wrap;
+            gap: 8px;
         }
+
+        @media (min-width: 600px) { .nav-mes { padding: 16px 20px; margin-bottom: 24px; gap: 12px; } }
 
         .nav-mes .mes-atual {
             flex: 1;
             text-align: center;
-            font-size: 1.15rem;
+            font-size: 1.05rem;
             font-weight: bold;
             color: var(--text-heading);
+            min-width: 120px;
         }
+
+        @media (min-width: 600px) { .nav-mes .mes-atual { font-size: 1.15rem; } }
 
         .btn-nav {
             background: var(--btn-nav-bg);
@@ -868,26 +886,32 @@ TEMPLATE = """
 
         .btn-nav:hover { background: var(--btn-nav-hover); }
 
-        .nav-mes form { display: flex; gap: 6px; align-items: center; }
+        .nav-mes form { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 
         .tabela-wrap {
             background: var(--surface);
             border-radius: 10px;
-            padding: 20px;
+            padding: 14px 10px;
             box-shadow: 0 2px 6px var(--shadow);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
-        table { width: 100%; border-collapse: collapse; }
+        @media (min-width: 600px) { .tabela-wrap { padding: 20px; } }
+
+        table { width: 100%; border-collapse: collapse; min-width: 400px; }
 
         th, td {
-            padding: 12px 14px;
+            padding: 10px 10px;
             text-align: left;
             border-bottom: 1px solid var(--border-light);
-            font-size: 0.95rem;
+            font-size: 0.9rem;
         }
 
+        @media (min-width: 600px) { th, td { padding: 12px 14px; font-size: 0.95rem; } }
+
         th {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             color: var(--text-muted);
@@ -1046,11 +1070,19 @@ TEMPLATE = """
         tr.vence-em-breve td {
             background: #fffbe6 !important;
         }
-        [data-theme="dark"] tr.vence-hoje td {
+        html[data-theme="dark"] tr.vence-hoje td {
             background: #3d1a1a !important;
         }
-        [data-theme="dark"] tr.vence-em-breve td {
+        html[data-theme="dark"] tr.vence-em-breve td {
             background: #2d2800 !important;
+        }
+        tr.vence-hoje td:first-child::before {
+            content: "⚠ ";
+            font-size: 0.85em;
+        }
+        tr.vence-em-breve td:first-child::before {
+            content: "⏰ ";
+            font-size: 0.85em;
         }
 
         /* Meta de gastos */
@@ -1096,12 +1128,12 @@ TEMPLATE = """
             border-left: 4px solid #f39c12;
             color: #5c4000;
         }
-        [data-theme="dark"] .alerta-banner.tem-atrasados {
+        html[data-theme="dark"] .alerta-banner.tem-atrasados {
             background: #3d1a1a;
             border-left-color: #e74c3c;
             color: #f8b4b4;
         }
-        [data-theme="dark"] .alerta-banner.so-proximos {
+        html[data-theme="dark"] .alerta-banner.so-proximos {
             background: #2d2800;
             border-left-color: #f39c12;
             color: #ffd97a;
@@ -1128,12 +1160,12 @@ TEMPLATE = """
 <!-- Banner de alertas (preenchido via JS) -->
 <div id="alerta-banner-container"></div>
 
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px">
     <h1 style="margin:0">Controle de Gastos</h1>
-    <div style="display:flex;gap:8px;align-items:center">
-        <button id="theme-toggle" class="btn-header" onclick="toggleTheme()">🌙</button>
-        <a href="/comparativo" class="btn-header">&#8646; Comparativo</a>
-        <a href="/dashboard" class="btn-header">&#9998; Dashboard</a>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <button id="theme-toggle" class="btn-header" title="Alternar tema">🌙</button>
+        <a href="/comparativo" class="btn-header" style="font-size:0.82rem;padding:8px 12px">&#8646; Comparativo</a>
+        <a href="/dashboard" class="btn-header" style="font-size:0.82rem;padding:8px 12px">Dashboard</a>
     </div>
 </div>
 
@@ -1256,18 +1288,15 @@ TEMPLATE = """
             </tr>
             {% for g in grupo %}
             {% set editando = (g[0] == editar_id) %}
+            {% set ns = namespace(row_cls='') %}
             {% if eh_mes_atual and g[5] is not none and g[3] == 'Pendente' %}
                 {% if g[5] <= dia_hoje %}
-                    {% set row_cls = 'vence-hoje' %}
+                    {% set ns.row_cls = 'vence-hoje' %}
                 {% elif g[5] <= dia_hoje + 3 %}
-                    {% set row_cls = 'vence-em-breve' %}
-                {% else %}
-                    {% set row_cls = '' %}
+                    {% set ns.row_cls = 'vence-em-breve' %}
                 {% endif %}
-            {% else %}
-                {% set row_cls = '' %}
             {% endif %}
-            <tr class="{{ 'editando' if editando else row_cls }}">
+            <tr class="{{ 'editando' if editando else ns.row_cls }}">
                 <td>{{ g[1] }}</td>
                 <td class="valor-col">
                     {% if editando %}
@@ -1398,14 +1427,18 @@ TEMPLATE = """
 </div>
 
 <script>
+function applyTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    localStorage.setItem('theme', t);
+    document.getElementById('theme-toggle').textContent = t === 'dark' ? '☀️' : '🌙';
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.content = t === 'dark' ? '#1a1d27' : '#4a90e2';
+}
 function toggleTheme() {
     const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    localStorage.setItem('theme', next);
-    document.getElementById('theme-toggle').textContent = next === 'dark' ? '☀️' : '🌙';
+    applyTheme(next);
 }
-document.getElementById('theme-toggle').textContent =
-    document.documentElement.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙';
+applyTheme(document.documentElement.getAttribute('data-theme') || 'light');
 
 // Notificações de vencimento
 (function() {
@@ -1469,7 +1502,7 @@ COMPARATIVO_TEMPLATE = """
             --empty-color: #bbbbbb;
         }
 
-        [data-theme="dark"] {
+        html[data-theme="dark"] {
             --bg: #0f1117;
             --surface: #1a1d27;
             --text: #cbd5e1;
@@ -1486,8 +1519,8 @@ COMPARATIVO_TEMPLATE = """
         body {
             font-family: Arial, sans-serif;
             max-width: 1000px;
-            margin: 40px auto;
-            padding: 20px;
+            margin: 0 auto;
+            padding: 12px;
             background: var(--bg);
             color: var(--text);
             transition: background 0.2s, color 0.2s;
@@ -1548,12 +1581,14 @@ COMPARATIVO_TEMPLATE = """
 
         .cards-comp {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 14px;
-            margin-bottom: 24px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
         }
-        @media (max-width: 700px) { .cards-comp { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 450px) { .cards-comp { grid-template-columns: 1fr; } }
+        @media (min-width: 600px) { .cards-comp { grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; } }
+
+        .tabela-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table { min-width: 360px; }
 
         .card {
             background: var(--surface);
@@ -1745,14 +1780,15 @@ COMPARATIVO_TEMPLATE = """
 </div>
 
 <script>
-function toggleTheme() {
-    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    localStorage.setItem('theme', next);
-    document.getElementById('theme-toggle').textContent = next === 'dark' ? '☀️' : '🌙';
+function applyTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    localStorage.setItem('theme', t);
+    document.getElementById('theme-toggle').textContent = t === 'dark' ? '☀️' : '🌙';
 }
-document.getElementById('theme-toggle').textContent =
-    document.documentElement.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙';
+function toggleTheme() {
+    applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+}
+applyTheme(document.documentElement.getAttribute('data-theme') || 'light');
 </script>
 
 </body>
@@ -1779,7 +1815,7 @@ DASHBOARD_TEMPLATE = """
             --shadow: rgba(0,0,0,0.07); --empty-color: #bbbbbb;
         }
 
-        [data-theme="dark"] {
+        html[data-theme="dark"] {
             --bg: #0f1117; --surface: #1a1d27; --text: #cbd5e1;
             --text-muted: #64748b; --text-heading: #f1f5f9;
             --border-light: #252a38; --hover-bg: #212636;
@@ -1789,16 +1825,19 @@ DASHBOARD_TEMPLATE = """
         body {
             font-family: Arial, sans-serif;
             max-width: 1100px;
-            margin: 40px auto;
-            padding: 20px;
+            margin: 0 auto;
+            padding: 12px;
             background: var(--bg);
             color: var(--text);
             transition: background 0.2s, color 0.2s;
         }
 
-        .topo { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+        @media (min-width: 600px) { body { padding: 20px; margin: 24px auto; } }
 
-        h1 { font-size: 1.8rem; color: var(--text-heading); }
+        .topo { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+
+        h1 { font-size: 1.5rem; color: var(--text-heading); }
+        @media (min-width: 600px) { h1 { font-size: 1.8rem; } }
 
         .btn-header {
             background: #1a1a2e;
@@ -1817,10 +1856,12 @@ DASHBOARD_TEMPLATE = """
 
         .cards {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 16px;
-            margin-bottom: 28px;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
         }
+        @media (min-width: 500px) { .cards { grid-template-columns: repeat(3, 1fr); } }
+        @media (min-width: 800px) { .cards { grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 28px; } }
 
         .card {
             background: var(--surface);
@@ -1894,10 +1935,10 @@ DASHBOARD_TEMPLATE = """
         .empty { text-align: center; padding: 48px; color: var(--empty-color); font-style: italic; }
 
         @media (max-width: 800px) {
-            .cards { grid-template-columns: repeat(3, 1fr); }
             .graficos-grid { grid-template-columns: 1fr !important; }
         }
-        @media (max-width: 500px)  { .cards { grid-template-columns: repeat(2, 1fr); } }
+        .tabela-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table { min-width: 320px; }
     </style>
 </head>
 <body>
@@ -2106,14 +2147,15 @@ if (resumoCtx) {
     });
 }
 
-function toggleTheme() {
-    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    localStorage.setItem('theme', next);
-    document.getElementById('theme-toggle').textContent = next === 'dark' ? '☀️' : '🌙';
+function applyTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    localStorage.setItem('theme', t);
+    document.getElementById('theme-toggle').textContent = t === 'dark' ? '☀️' : '🌙';
 }
-document.getElementById('theme-toggle').textContent =
-    document.documentElement.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙';
+function toggleTheme() {
+    applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+}
+applyTheme(document.documentElement.getAttribute('data-theme') || 'light');
 </script>
 
 </body>
